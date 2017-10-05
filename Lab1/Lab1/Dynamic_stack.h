@@ -4,7 +4,7 @@
  *  - Select the current calendar term and enter the year
  *  - List students with whom you had discussions and who helped you
  *
- * uWaterloo User ID:  jzxhuang @uwaterloo.ca
+ * uWaterloo User ID:  jzxhuang@uwaterloo.ca
  * Submitted for ECE 250
  * Department of Electrical and Computer Engineering
  * University of Waterloo
@@ -71,7 +71,7 @@ initial_size(n)
 
 
 Dynamic_stack::~Dynamic_stack() {
-	delete[] array;								// uncertain about this
+	delete[] array;								// destructor - delete array
 }
 
 
@@ -90,7 +90,7 @@ int Dynamic_stack::size() const {				// return count which gives the # of elemen
 }
 
 
-bool Dynamic_stack::empty() const {				// return true if the stack is empty
+bool Dynamic_stack::empty() const {				// return true if the stack is empty, else false
 	return (count==0);  
 }
 
@@ -119,24 +119,20 @@ int Dynamic_stack::pop() {
 		underflow u;
 		throw u;
 	}
-	else {
-		int popped = array[count - 1];
+	else {										// otherwise, return top element of array and delete the top element. decrement count
+		int return_pop = array[count - 1];
 		array[count-1]=nullptr;
 		count--;
-		return popped;
+		return return_pop;
 	}
 }
 
 void Dynamic_stack::clear() {
-	if (array_size != initial_size) {			// if array size does not equal initial size
-		delete[] array;							// delete array and create new array of initial size
-		array = new int[initial_size];
-		array_size = initial_size;
+	delete[] array;								//delete the array
+	if (array_size != initial_size) {			// if array size does not equal initial size, set array size to equal initial size
+		array_size = initial_size;				
 	}
-	else {
-		for (int i = 0; i < count; i++)			// otherwise, set all values to null
-			array[count] = nullptr;
-	}
+	array = new int[array_size];			    // create new empty array of array size
 	count = 0;									// reset count to 0
 }
 #endif
