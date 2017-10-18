@@ -47,19 +47,18 @@ class DoubleHashTable {
 };
 
 template<typename T >
-DoubleHashTable<T >::DoubleHashTable( int m ):	//constructor, initializes member variables and 2 arrays, sets state to empty for status array	
+DoubleHashTable<T >::DoubleHashTable( int m ):	// constructor, initializes member variables and 2 arrays, sets state to empty for status array	
 count( 0 ), power( m ),
 array_size( 1 << power ),
 array( new T [array_size] ),
 array_state( new state[array_size] ) {
-
 	for ( int i = 0; i < array_size; ++i ) {
 		array_state[i] = EMPTY;
 	}
 }
 
 template<typename T >
-DoubleHashTable<T >::~DoubleHashTable() {		//destructor... delete arrays
+DoubleHashTable<T >::~DoubleHashTable() {		// destructor... delete arrays
 	delete [] array;
 	delete [] array_state;
 }
@@ -83,35 +82,36 @@ bool DoubleHashTable<T >::empty() const {		// return true if the hash table is e
 
 template<typename T >
 int DoubleHashTable<T >::h1( T const &obj ) const {	// 1st hash function...
-	int bin = static_cast<int>(obj);			// cast obj to int and mod with M	
-	return (bin % array_size);
+	int index = static_cast<int>(obj);			// cast obj to int and mod with M	
+	index = index % array_size;
+	if (index < 0)								// ensure index is positive, if not, add M
+		index += array_size;
+	return index;
 }
 
 template<typename T >
 int DoubleHashTable<T >::h2( T const &obj ) const {	// 2nd hash function
-	int bin = static_cast<int>(obj);			// cast obj to int, divide by M and mod with M
-	bin = (bin/array_size) % array_size;
-	if (bin < 0)								// if negative, make positive by adding M (how would this ever happen???)
-		bin += array_size;						
-	if (bin%2 == 0 && bin != 0)					// if even and not zero, make odd by adding 1					// note... why am I doing this?
-		bin++;
-	if (bin == 0 && array_state[bin] != EMPTY)	// if even and zero, check if array[0] is occupied or not. if yes, add 1
-		bin++;
-	return bin;
+	int index = static_cast<int>(obj);			// cast obj to int, divide by M and mod with M
+	index = (index/array_size) % array_size;
+	if (index < 0)								// ensure index is positive, if not, add M 
+		index += array_size;				
+	if (index % 2 == 0)							// ensure odd, if not add 1. We need odd to prevent infinite loop through table as table has an even size
+		index += 1;
+	return index;
 }
 
 template<typename T >
 bool DoubleHashTable<T >::member( T const &obj ) const {
-	int probe = h1(obj), initial = h1(obj);
+	int probe = h1(obj);						// set probe, initial and offset using 1st and 2nd hash functions
+	int initial = h1(obj);
 	int offset = h2(obj);
-	while (array[probe] == OCCUPIED){			// does deleted count as occupied ... ?							
-		if(array[probe] == obj)					// if the object in table matches object passed in, return true
+	while (array_state[probe] != EMPTY){   		// while there is an object at the index of probe						
+		if(array[probe] == obj && array_state[probe] != DELETED)	// if the object in table matches object passed in, and is not DELETED, return true
 			return true;
 		probe = (probe + offset) % array_size;	// otherwise, continue iterating using the double hash function
 		if (probe == initial)					// prevent inf loop! if we iterate back to the initial, break... this can happen for full hash tables
 			break;
 	}	
-
 	return false;
 }
 
@@ -122,15 +122,15 @@ T DoubleHashTable<T >::bin( int n ) const {	    // return the object at index n.
 
 template<typename T >
 void DoubleHashTable<T >::insert( T const &obj ) {
-	 count++;									// increment count
 	 if (count == array_size){					// if table is full, throw overflow exception
 		 overflow u;
 		 throw u;
 	 }
 	 
-	 int probe = h1(obj);
+	 count++;									// increment count
+	 int probe = h1(obj);						// set probe and offset using 1st and 2nd hash functions
 	 int offset = h2(obj);
-	 while(array_state[probe] != EMPTY)			// iterate through using double hash function until an empty slot in the table is found
+	 while(array_state[probe] == OCCUPIED)		// iterate through using double hash function until an EMPTY or DELETED slot in the table is found
 		 probe = (probe + offset) % array_size;
 	 array[probe] = obj; 						// insert object into table and set state to OCCUPIED
 	 array_state[probe] = OCCUPIED;
@@ -139,17 +139,17 @@ void DoubleHashTable<T >::insert( T const &obj ) {
 
 template<typename T >
 bool DoubleHashTable<T >::remove( T const &obj ) {
-	 int probe = h1(obj);
+	 int probe = h1(obj);						// set probe, offset and initial value using 1st and 2nd hash functions
 	 int initial = h1(obj);
 	 int offset = h2(obj);
-	 while(array_state[probe] == OCCUPIED){		// while there is an object at index of probe
-		 if(array[probe] == obj && array_state[probe] != DELETED){	// check if the object matches the one to be deleted. ignore if already deleted ( CONFIRM THIS)
-			 array_state[probe] == DELETED;		// set state to deleted
+	 while(array_state[probe] != EMPTY){		// while there is an object at index of probe
+		 if(array[probe] == obj && array_state[probe] != DELETED){	// check if the object matches the one to be deleted and does not have state of DELETED
+			 array_state[probe] = DELETED;		// set state to deleted
 			 count--;							// decrement count
 			 return true;
 		 }
 		 probe = (probe + offset) % array_size;	// if no match, iterate through by adding second hash function to probe
-		 if (probe == initial)					// if probe = initial value, we have no match and have iterated through the whole table (full). break to prevent inf. loop
+		 if (probe == initial)					// if probe = initial value, we have no match and have iterated through the whole table. break to prevent inf. loop
 			 break;
 	 }
 	return false;								// if no matches, return false
@@ -157,7 +157,7 @@ bool DoubleHashTable<T >::remove( T const &obj ) {
 
 template<typename T >
 void DoubleHashTable<T >::clear() {	
-	 delete [] array;							// clear table
+	 delete [] array;							// clear table and make new array
 	 array = new T [array_size];
 	 for (int i = 0; i< array_size; i++){		// reset state table to empty
 		 array_state[i] = EMPTY;
